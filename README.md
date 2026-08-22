@@ -18,42 +18,49 @@ strength of the linear relaxation.
 
 ## The model
 
-**Decision variables.** `y[j] = 1` if point `j` is opened as a center. `x[i][j] = 1` if non-center
-point `i` is assigned to center `j`, for `i != j`. `eta >= 0` is the covering radius, meaning the
-largest realized assignment distance.
+**Sets and parameters.** Points $i, j \in V = \{1, \ldots, n\}$, where every point is both a
+demand point and a candidate center. $d_{ij}$ is the distance from point $i$ to point $j$, and $p$ is
+the number of centers to open.
 
-```
-minimize    eta
+**Decision variables.**
 
-subject to  sum_j y[j] = p                                  (1)  open exactly p centers
-            y[i] + sum_{j != i} x[i][j] = 1     for all i   (2)  point is either a center or assigned to one
-            x[i][j] <= y[j]                  for all i != j (3)  linking to open centers
-            d[i][j] * x[i][j] <= eta         for all i != j (4)  eta dominates every realized distance
+- $y_j \in \{0,1\}$, equal to 1 if point $j$ is opened as a center.
+- $x_{ij} \in \{0,1\}$, equal to 1 if non-center point $i$ is assigned to center $j$, for $i \neq j$.
+- $\eta \ge 0$, the covering radius, meaning the largest realized assignment distance.
 
-            x[i][j], y[j] binary,  eta >= 0
-```
+**Model.**
 
-Stated directly the problem is a nested `min max min d[i][j]`, which is not linear. Constraint (4)
-removes the outer `max` by bounding every individual assignment distance by `eta`, and since the
-objective pushes `eta` down it settles exactly on the largest one. Constraint (2) removes the inner
-`min`, because each point is assigned to exactly one center and a shorter assignment always relaxes
+$$
+\begin{aligned}
+\min \quad & \eta \\
+\text{s.t.}\quad
+& \sum_{j \in V} y_j = p && && \text{(1) open exactly } p \text{ centers}\\
+& y_i + \sum_{j \neq i} x_{ij} = 1 && \forall\, i \in V && \text{(2) point is either center or assigned to one}\\
+& x_{ij} \le y_j && \forall\, i \neq j && \text{(3) linking to open centers}\\
+& d_{ij}\, x_{ij} \le \eta && \forall\, i \neq j && \text{(4) } \eta \text{ dominates every realized distance}\\
+& x_{ij}, y_j \in \{0,1\}, \quad \eta \ge 0.
+\end{aligned}
+$$
+
+Stated directly the problem is a nested $\min \max \min d_{ij}$, which is not linear. Constraint (4)
+removes the outer $\max$ by bounding every individual assignment distance by $\eta$, and since the
+objective pushes $\eta$ down it settles exactly on the largest one. Constraint (2) removes the inner
+$\min$, because each point is assigned to exactly one center and a shorter assignment always relaxes
 (4), so an optimal solution never assigns a point to anything other than its nearest open center.
 
-Constraint (2) is an equality including `y[i]`, which encodes the convention that a point which is
-itself a center is not assigned to anything and contributes no distance to `eta`. The objective
+Constraint (2) is an equality including $y_i$, which encodes the convention that a point which is
+itself a center is not assigned to anything and contributes no distance to $\eta$. The objective
 therefore measures distance from non-centers only.
 
 **Two ways to write constraint (4).** Written pair by pair, (4) relaxes badly: a point can spread a
 fractional assignment across many centers, and because each row sees a single pair, the relaxation
-never charges more than the largest term `d[i][j] * x[i][j]`, which any small fraction makes cheap.
-Since (2) forces `sum_{j != i} x[i][j] = 1`, the same condition can be written once per point:
+never charges more than the largest term $d_{ij} x_{ij}$, which any small fraction makes cheap.
+Since (2) forces $\sum_{j \neq i} x_{ij} = 1$, the same condition can be written once per point:
 
-```
-            sum_{j != i} d[i][j] * x[i][j] <= eta    for all i    (4a)
-```
+$$\sum_{j \neq i} d_{ij}\, x_{ij} \le \eta \qquad \forall\, i \in V \qquad \text{(4a)}$$
 
 A fractional assignment now pays a weighted average rather than hiding behind its cheapest
-component. The integer feasible set is unchanged, and `n^2 - n` rows become `n`. Both forms are
+component. The integer feasible set is unchanged, and $n^2 - n$ rows become $n$. Both forms are
 implemented and selected by the `Aggregated` flag on `build_model`; the effect on the bound is
 measured below.
 
@@ -61,7 +68,7 @@ measured below.
 
 ## The data
 
-Each instance file gives `n`, `p`, and the full `n x n` distance matrix:
+Each instance file gives $n$, $p$, and the full $n \times n$ distance matrix:
 
 ```
 N: <number of points>
@@ -77,11 +84,11 @@ DIST: [
 
 The files are read exactly as supplied, with no edits to the source. The parser tokenizes on
 whitespace rather than relying on line breaks or column positions, so the differences in line
-wrapping between the three files do not matter, and it checks that exactly `n * n` values were
+wrapping between the three files do not matter, and it checks that exactly $n^2$ values were
 recovered before any model is built.
 
 These are synthetic distance matrices rather than points in a plane. All three are asymmetric, so
-`d[i][j]` is read directionally as the distance incurred when point `i` is served by center `j`, and
+$d_{ij}$ is read directionally as the distance incurred when point $i$ is served by center $j$, and
 the formulation assumes neither symmetry nor the triangle inequality.
 
 ---
