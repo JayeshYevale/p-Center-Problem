@@ -149,8 +149,8 @@ are free from [Gurobi](https://www.gurobi.com/academia/academic-program-and-lice
 ## Running it
 
 ```bash
-git clone https://github.com/JayeshYevale/p-center-problem.git
-cd p-center-problem
+git clone https://github.com/JayeshYevale/p-Center-Problem.git
+cd p-Center-Problem
 pip install -r requirements.txt
 jupyter lab
 ```
