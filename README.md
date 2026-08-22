@@ -18,51 +18,26 @@ strength of the linear relaxation.
 
 ## The model
 
-**Sets and parameters.** Points $i, j \in V = \lbrace 1, \ldots, n \rbrace$, where every point is both a
-demand point and a candidate center. $d_{ij}$ is the distance from point $i$ to point $j$, and $p$ is
-the number of centers to open.
-
-**Decision variables.**
-
-- $y_j \in \lbrace 0,1 \rbrace$, equal to 1 if point $j$ is opened as a center.
-- $x_{ij} \in \lbrace 0,1 \rbrace$, equal to 1 if non-center point $i$ is assigned to center $j$, for $i \neq j$.
-- $\eta \ge 0$, the covering radius, meaning the largest realized assignment distance.
-
-**Model.**
+**Decision variables.** $y_j \in \lbrace 0,1 \rbrace$ if point $j$ is opened as a center, $x_{ij} \in \lbrace 0,1 \rbrace$
+if non-center point $i$ is assigned to center $j$ for $i \neq j$, and $\eta \ge 0$ is the covering
+radius, meaning the largest realized assignment distance.
 
 $$
 \begin{aligned}
 \min \quad & \eta \\
 \text{s.t.}\quad
-& \sum_{j \in V} y_j = p && && \text{(1) open exactly } p \text{ centers}\\
-& y_i + \sum_{j \neq i} x_{ij} = 1 && \forall\, i \in V && \text{(2) point is either center or assigned to one}\\
-& x_{ij} \le y_j && \forall\, i \neq j && \text{(3) linking to open centers}\\
-& d_{ij}\, x_{ij} \le \eta && \forall\, i \neq j && \text{(4) } \eta \text{ dominates every realized distance}\\
+& \sum_{j} y_j = p && \text{open exactly } p \text{ centers}\\
+& y_i + \sum_{j \neq i} x_{ij} = 1 && \text{point is either a center or assigned to one}\\
+& x_{ij} \le y_j && \text{linking to open centers}\\
+& d_{ij}\, x_{ij} \le \eta && \eta \text{ dominates every realized distance}\\
 & x_{ij}, y_j \in \lbrace 0,1 \rbrace, \quad \eta \ge 0.
 \end{aligned}
 $$
 
-Stated directly the problem is a nested $\min \max \min d_{ij}$, which is not linear. Constraint (4)
-removes the outer $\max$ by bounding every individual assignment distance by $\eta$, and since the
-objective pushes $\eta$ down it settles exactly on the largest one. Constraint (2) removes the inner
-$\min$, because each point is assigned to exactly one center and a shorter assignment always relaxes
-(4), so an optimal solution never assigns a point to anything other than its nearest open center.
-
-Constraint (2) is an equality including $y_i$, which encodes the convention that a point which is
-itself a center is not assigned to anything and contributes no distance to $\eta$. The objective
-therefore measures distance from non-centers only.
-
-**Two ways to write constraint (4).** Written pair by pair, (4) relaxes badly: a point can spread a
-fractional assignment across many centers, and because each row sees a single pair, the relaxation
-never charges more than the largest term $d_{ij} x_{ij}$, which any small fraction makes cheap.
-Since (2) forces $\sum_{j \neq i} x_{ij} = 1$, the same condition can be written once per point:
-
-$$\sum_{j \neq i} d_{ij}\, x_{ij} \le \eta \qquad \forall\, i \in V \qquad \text{(4a)}$$
-
-A fractional assignment now pays a weighted average rather than hiding behind its cheapest
-component. The integer feasible set is unchanged, and $n^2 - n$ rows become $n$. Both forms are
-implemented and selected by the `Aggregated` flag on `build_model`; the effect on the bound is
-measured below.
+Stated directly the problem is a nested $\min \max \min d_{ij}$, which is not linear. The radius
+constraint removes the outer $\max$ by bounding every assignment distance by $\eta$, and the
+assignment constraint removes the inner $\min$ by ensuring each point is served by exactly one
+center. Both nested operators collapse into linear constraints this way.
 
 ---
 
@@ -127,6 +102,14 @@ but stopping at a 10% gap saves nothing, since the run reaches that threshold on
 optimum.
 
 ### Formulation strength
+
+The radius constraint above can also be written once per point instead of once per pair:
+
+$$\sum_{j \neq i} d_{ij}\, x_{ij} \le \eta \qquad \forall\, i$$
+
+The two are equivalent over the integers, since exactly one term in the sum is nonzero for any
+feasible $x$, but they behave very differently in the LP relaxation, measured below. Both forms are
+implemented and selected by the `Aggregated` flag on `build_model`.
 
 Solving the LP relaxation of both forms of constraint (4) gives:
 
