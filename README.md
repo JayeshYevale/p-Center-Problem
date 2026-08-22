@@ -18,14 +18,14 @@ strength of the linear relaxation.
 
 ## The model
 
-**Sets and parameters.** Points $i, j \in V = \{1, \ldots, n\}$, where every point is both a
+**Sets and parameters.** Points $i, j \in V = \lbrace 1, \ldots, n \rbrace$, where every point is both a
 demand point and a candidate center. $d_{ij}$ is the distance from point $i$ to point $j$, and $p$ is
 the number of centers to open.
 
 **Decision variables.**
 
-- $y_j \in \{0,1\}$, equal to 1 if point $j$ is opened as a center.
-- $x_{ij} \in \{0,1\}$, equal to 1 if non-center point $i$ is assigned to center $j$, for $i \neq j$.
+- $y_j \in \lbrace 0,1 \rbrace$, equal to 1 if point $j$ is opened as a center.
+- $x_{ij} \in \lbrace 0,1 \rbrace$, equal to 1 if non-center point $i$ is assigned to center $j$, for $i \neq j$.
 - $\eta \ge 0$, the covering radius, meaning the largest realized assignment distance.
 
 **Model.**
@@ -38,7 +38,7 @@ $$
 & y_i + \sum_{j \neq i} x_{ij} = 1 && \forall\, i \in V && \text{(2) point is either center or assigned to one}\\
 & x_{ij} \le y_j && \forall\, i \neq j && \text{(3) linking to open centers}\\
 & d_{ij}\, x_{ij} \le \eta && \forall\, i \neq j && \text{(4) } \eta \text{ dominates every realized distance}\\
-& x_{ij}, y_j \in \{0,1\}, \quad \eta \ge 0.
+& x_{ij}, y_j \in \lbrace 0,1 \rbrace, \quad \eta \ge 0.
 \end{aligned}
 $$
 
