@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+*.nbconvert.ipynb
+Untitled*.ipynb
+
+# Gurobi
+gurobi.log
+*.log
+gurobi.lic
+*.lp
+*.mps
+*.sol
+*.ilp
+
+# OS and editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
