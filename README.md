@@ -29,7 +29,7 @@ $$
 & \sum_{j} y_j = p && \text{open exactly } p \text{ centers}\\
 & y_i + \sum_{j \neq i} x_{ij} = 1 && \text{point is either a center or assigned to one}\\
 & x_{ij} \le y_j && \text{linking to open centers}\\
-& d_{ij}\, x_{ij} \le \eta && \eta \text{ dominates every realized distance}\\
+& d_{ij} x_{ij} \le \eta && \eta \text{ dominates every realized distance}\\
 & x_{ij}, y_j \in \lbrace 0,1 \rbrace, \quad \eta \ge 0.
 \end{aligned}
 $$
