@@ -1,7 +1,7 @@
 # The p-Center Problem
 
 Minimax facility location, formulated as an integer program and solved with Gurobi. Given a set of
-points and the distance between every ordered pair, choose exactly `p` of them as centers and assign
+points and the distance between every ordered pair, choose exactly $p$ of them as centers and assign
 every remaining point to one center, so that the **largest** point-to-center distance is as small as
 possible.
 
@@ -18,26 +18,40 @@ strength of the linear relaxation.
 
 ## The model
 
-**Decision variables.** $y_j \in \lbrace 0,1 \rbrace$ if point $j$ is opened as a center, $x_{ij} \in \lbrace 0,1 \rbrace$
-if non-center point $i$ is assigned to center $j$ for $i \neq j$, and $\eta \ge 0$ is the covering
-radius, meaning the largest realized assignment distance.
+**Decision variables.** $y_j \in \lbrace 0,1 \rbrace$ is 1 if point $j$ is opened as a center.
+$x_{ij} \in \lbrace 0,1 \rbrace$ is 1 if non-center point $i$ is assigned to center $j$, for
+$i \neq j$. $\eta \ge 0$ is the covering radius, meaning the largest realized assignment distance.
 
 $$
 \begin{aligned}
 \min \quad & \eta \\
 \text{s.t.}\quad
-& \sum_{j} y_j = p && \text{open exactly } p \text{ centers}\\
-& y_i + \sum_{j \neq i} x_{ij} = 1 && \text{point is either a center or assigned to one}\\
-& x_{ij} \le y_j && \text{linking to open centers}\\
-& d_{ij}. x_{ij} \le \eta && \eta \text{ dominates every realized distance}\\
+& \sum_{j \in V} y_j = p && && \text{(1) open exactly } p \text{ centers}\\
+& y_i + \sum_{j \neq i} x_{ij} = 1 && \forall\, i \in V && \text{(2) point is either center or assigned to one}\\
+& x_{ij} \le y_j && \forall\, i \neq j && \text{(3) linking to open centers}\\
+& d_{ij}\, x_{ij} \le \eta && \forall\, i \neq j && \text{(4) } \eta \text{ dominates every realized distance}\\
 & x_{ij}, y_j \in \lbrace 0,1 \rbrace, \quad \eta \ge 0.
 \end{aligned}
 $$
 
-Stated directly the problem is a nested $\min \max \min d_{ij}$, which is not linear. The radius
-constraint removes the outer $\max$ by bounding every assignment distance by $\eta$, and the
-assignment constraint removes the inner $\min$ by ensuring each point is served by exactly one
-center. Both nested operators collapse into linear constraints this way.
+Stated directly the problem is a nested $\min \max \min d_{ij}$, which is not linear. Constraint (4)
+removes the outer $\max$ by bounding every individual assignment distance by $\eta$, and since the
+objective pushes $\eta$ down it settles exactly on the largest one. Constraint (2) removes the inner
+$\min$: each point is assigned to exactly one center, and because a shorter assignment always relaxes
+(4), an optimal solution never assigns a point to anything other than its nearest open center.
+
+Constraint (2) is an equality including $y_i$, which encodes the convention that a point which is
+itself a center is not assigned to anything and contributes no distance to $\eta$. The objective
+therefore measures distance from non-centers only.
+
+**An equivalent form of (4).** Because (2) forces $\sum_{j \neq i} x_{ij} = 1$ for every non-center,
+the per-pair constraints (4) can be collapsed into one constraint per point:
+
+$$\sum_{j \neq i} d_{ij}\, x_{ij} \le \eta \qquad \forall\, i \in V \qquad \text{(4a) aggregated realized distance}$$
+
+Over the integers the two are equivalent, since exactly one term in the sum is nonzero. Over the
+reals they are not, and the difference is measured below. Both are implemented and selected by the
+`Aggregated` flag on `build_model`.
 
 ---
 
@@ -70,15 +84,15 @@ the formulation assumes neither symmetry nor the triangle inequality.
 
 ## Results
 
-| Instance | n | p | Radius | Status | Runtime |
+| Instance | $n$ | $p$ | Radius | Status | Runtime |
 | --- | ---: | ---: | ---: | --- | ---: |
 | `PC001.dat` | 10 | 3 | **257** | Optimal | 0.07 s |
 | `PC002.dat` | 100 | 15 | **684** | Optimal | 23.59 s |
 | `PC003.dat` | 200 | 25 | **1085** (best found) | Time limit, gap 26.73% | 600.08 s |
 
 PC001 opens centers at points 5, 7 and 10, and the radius is set by a single pair, point 8 served by
-center 7 at distance 257. PC003 ends at the ten minute limit with a lower bound of 795, so its result
-is a best known radius rather than a proven optimum.
+center 7 at distance 257. PC003 ends at the ten minute limit against a lower bound of 795, so its
+result is a best known radius rather than a proven optimum.
 
 Every radius is recomputed from the raw distance matrix and asserted against the solver objective, so
 no reported result rests on Gurobi's own output alone. Runtimes come from a single machine and will
@@ -95,39 +109,36 @@ branch-and-bound, because Gurobi retains only the final objective and gap once a
 | Optimal solution first found | 21.84 s | 92.6% |
 | Gap first below 10% | 21.84 s | 92.6% |
 
-Almost the whole solve is search rather than proof. The bound had already climbed to 621 while the
-incumbent was still 702, so finding the optimum closed the gap to 9.21% on its own and the proof that
+Almost the entire solve is search rather than proof. The bound had already reached 621 while the
+incumbent was still 702, so finding 684 closed the gap to 9.21% on its own and the proof that
 followed took 1.75 seconds. Stopping at 15 seconds would have returned 702, only 2.6% above optimal,
 but stopping at a 10% gap saves nothing, since the run reaches that threshold only by finding the
 optimum.
 
 ### Formulation strength
 
-The radius constraint above can also be written once per point instead of once per pair:
+Solving the LP relaxation under each form of the radius constraint gives:
 
-$$\sum_{j \neq i} d_{ij}\, x_{ij} \le \eta \qquad \forall\, i$$
-
-The two are equivalent over the integers, since exactly one term in the sum is nonzero for any
-feasible $x$, but they behave very differently in the LP relaxation, measured below. Both forms are
-implemented and selected by the `Aggregated` flag on `build_model`.
-
-Solving the LP relaxation of both forms of constraint (4) gives:
-
-| Instance | Rows (4) | LP bound (4) | Rows (4a) | LP bound (4a) | Improvement |
+| Instance | Rows with (4) | LP bound with (4) | Rows with (4a) | LP bound with (4a) | Improvement |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | `PC001.dat` | 191 | 22.54 | 111 | 88.56 | 3.9x |
 | `PC002.dat` | 19,901 | 17.18 | 10,101 | 284.66 | 16.6x |
 | `PC003.dat` | 79,801 | 16.04 | 40,201 | 356.98 | 22.3x |
 
-Gurobi largely finds this on its own. The PC002 solver log reports a root relaxation matching the
-aggregated bound rather than the per-pair one, and presolve cuts the model down to 10,088 rows,
-almost exactly what (4a) states outright. So writing it aggregated buys a smaller model rather than a
-bound the solver would have missed.
+Written pair by pair, (4) relaxes badly: a point can spread a fractional assignment across many
+centers, and because each constraint sees a single pair, the relaxation never charges more than the
+largest term $d_{ij} x_{ij}$, which any small fraction makes cheap. Under (4a) a fractional
+assignment pays a weighted average instead, which is worth 3.9x to 22.3x on the root bound while
+almost halving the row count.
 
-What neither form fixes is the distance that remains: on PC002 the aggregated bound still sits at
-under half the optimum in the results table above. That gap is intrinsic to the minimax structure
-rather than an artifact of how the constraint is written, and it is why PC003 does not close within
-the time limit.
+Gurobi largely finds this on its own, though. The PC002 log reports a root relaxation of 284.66, the
+aggregated bound, not 17.18, and presolve cuts 19,901 rows to 10,088, almost exactly the 10,101 that
+(4a) states outright. So writing it aggregated buys a smaller model, not a bound the solver would
+have missed.
+
+What neither form fixes is the gap that remains. Even 284.66 sits far below 684 on PC002, and 356.98
+below the 1085 on PC003. That distance is intrinsic to the minimax structure rather than an artifact
+of how the constraint is written, and it is why PC003 is still 26.7% open at the time limit.
 
 ---
 
@@ -163,7 +174,7 @@ are committed, so the models and results can be read without installing a solver
 ## Repository layout
 
 ```
-p-center-problem/
+p-Center-Problem/
 ├── p_center_problem.ipynb
 ├── PC001.dat
 ├── PC002.dat
